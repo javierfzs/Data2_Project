@@ -1,0 +1,425 @@
+# # Crime and Education Using Machine Learning - Dec. 4
+
+# In[1]:
+
+
+import os
+import pandas as pd
+import requests
+import seaborn as sns
+import numpy as np
+
+
+# In[2]:
+
+
+def get_data_chicago(id):
+    '''
+    Connect to the chicago data portal API and returns a dataframe
+    '''
+    
+    url = f'https://data.cityofchicago.org/api/views/{id}/rows.csv?accessType=DOWNLOAD'
+    df = pd.read_csv(url)
+    
+    return df
+
+
+# In[3]:
+
+
+# School Performance 2012
+school_performance_2012 = get_data_chicago('9xs2-f89t')
+
+
+# In[62]:
+
+
+school_performance_2012=school_performance_2012.rename(columns = {'School ID':'School_ID'}, inplace = False)
+school_performance_2012.head()
+
+
+# In[63]:
+
+
+# Crime 2016. Will be the testing data. 
+
+Crime_2016 = get_data_chicago('kf95-mnd6')
+Crime_2016.head()
+
+
+# In[65]:
+
+
+# School Performance 2015 - 2016 (it uses the last year as a tag).
+school_performance_2016 = get_data_chicago('fvrx-esxp')
+school_performance_2016.head()
+
+
+# In[66]:
+
+
+#Crime 2018
+Crime_2018 = get_data_chicago('3i3m-jwuy')
+Crime_2018.head()
+
+
+# In[67]:
+
+
+# School Performance in 2017 - 2018. (it uses the last year as a tag)
+
+school_performance_2018 = get_data_chicago('wkiz-8iya')
+school_performance_2018.head()
+
+
+# In[9]:
+
+
+#check if  Community_Area column exists in school_performance_2016 and school_performance_2018
+Community_Area_2016 = "Community Area Number" in school_performance_2016
+Community_Area_2018 = "Community Area Number" in school_performance_2018     # Could remove later. 
+
+
+# In[10]:
+
+
+Community_Area_2016
+
+
+# In[11]:
+
+
+Community_Area_2018
+
+
+# In[68]:
+
+
+school_performance_2018.columns
+
+
+# In[69]:
+
+
+#Since Community Area Number does not exist in school_performance_2016 neither 2018, we merge that column 
+#using School_ID as key
+school_performance_2016=school_performance_2016.merge(school_performance_2012[['School_ID', 'Community Area Name','Community Area Number']],
+                                                      on='School_ID')
+
+
+# In[70]:
+
+
+school_performance_2016.head()
+
+
+# In[72]:
+
+
+school_performance_2018=school_performance_2018.merge(school_performance_2012[['School_ID', 'Community Area Name','Community Area Number']],
+                 on='School_ID')
+school_performance_2018.head()
+
+
+# In[16]:
+
+
+Crime_2016['Primary Type'].unique()
+
+
+# In[17]:
+
+
+# recode according to type of crime: 1: Violent, 0: Non Violent, 99: undefined
+
+def type_to_binary(x):
+        if x=='BATTERY': return 1
+        if x=='MOTOR VEHICLE THEFT': return 1
+        if x=='ROBBERY': return 1
+        if x=='THEFT': return 1
+        if x=='ASSAULT': return 1
+        if x=='CRIMINAL SEXUAL ASSAULT': return 1
+        if x=='INTIMIDATION': return 1
+        if x=='WEAPONS VIOLATION': return 1
+        if x=='HOMICIDE': return 1
+        if x=='PUBLIC PEACE VIOLATION': return 1
+        if x=='KIDNAPPING': return 1
+        if x=='SEX OFFENSE': return 1
+        if x=='CRIM SEXUAL ASSAULT': return 1
+        if x=='CRIMINAL SEXUAL ASSAULT': return 1
+        if x=='DECEPTIVE PRACTICE': return 0
+        if x=='NARCOTICS': return 0
+        if x=='INTERFERENCE WITH PUBLIC OFFICER': return 0
+        if x=='PROSTITUTION': return 0
+        if x=='GAMBING': return 0
+        if x=='OBSCENITY': return 0
+        if x=='RITUALISM': return 0
+        if x=='CONCEALED CARRY LICENSE VIOLATION': return 0
+        if x=='LIQUOR LAW VIOLATION': return 0
+        if x=='HUMAN TRAFFICKING': return 0
+        if x=='PUBLIC INDECENCY': return 0
+        if x=='OTHER NARCOTIC VIOLATION': return 0
+        if x=='OTHER OFFENSE': return 99
+        if x=='CRIMINAL TRESPASS': return 99
+        if x=='CRIMINAL DAMAGE': return 99
+        if x=='BURGLARY': return 99
+        if x=='OFFENSE INVOLVING CHILDREN': return 99
+        if x=='ARSON': return 99
+        if x=='STALKING': return 99
+        if x=='NON-CRIMINAL': return 99
+        if x=='CRIMINAL TRESPASS': return 99
+        if x=='NON-CRIMINAL (SUBJECT SPECIFIED)': return 99
+
+
+# Applying the function
+Crime_2016['binary'] = Crime_2016['Primary Type'].apply(type_to_binary)
+Crime_2018['binary'] = Crime_2018['Primary Type'].apply(type_to_binary)
+
+
+# In[19]:
+
+
+Crime_2016['binary'].value_counts()    # Could potentially remove the 99s. 
+
+
+# In[20]:
+
+
+Crime_2018['binary'].value_counts()
+
+
+# In[21]:
+
+
+Crime_2016 = Crime_2016[Crime_2016.binary != 99]
+Crime_2018 = Crime_2018[Crime_2018.binary != 99]
+Crime_2016.columns
+
+
+# In[73]:
+
+
+#Subset for the column of interest
+Crime_2016 = Crime_2016[['Community Area','binary']]
+# Rename the Community Area in order to have homogeneous names
+Crime_2016 = Crime_2016.rename(columns = {'Community Area':'Community Area Number'}, inplace = False)
+
+
+# In[23]:
+
+
+#Subset for the column of interest
+Crime_2018 = Crime_2018[['Community Area','binary']]
+# Rename the Community Area in order to have homogeneous names
+Crime_2018 = Crime_2018.rename(columns = {'Community Area':'Community Area Number'}, inplace = False)
+
+
+# In[74]:
+
+
+test2 = "nwea_reading_attainment_grade_8_pct" in school_performance_2016
+test2
+
+
+# In[75]:
+
+
+#school_performance_2016.columns
+for col in school_performance_2016.columns: 
+    print(col)
+
+
+# In[76]:
+
+
+#Subset for the column of interest-2016
+school_performance_2016=school_performance_2016[['NWEA_Math_Attainment_Grade_8_Pct',
+                                      'NWEA_Reading_Attainment_Grade_8_Pct', 'Student_Attendance_Avg_Pct',
+                                                 'Community Area Number']]
+
+
+# In[77]:
+
+
+#Subset for the column of interest-2018
+school_performance_2018=school_performance_2018[['NWEA_Math_Attainment_Grade_8_Pct',
+                                      'NWEA_Reading_Attainment_Grade_8_Pct', 'Student_Attendance_Avg_Pct',
+                                                 'Community Area Number']]
+
+
+# In[29]:
+
+
+community_performance_2016=school_performance_2016.groupby('Community Area Number').mean().reset_index()
+community_performance_2018=school_performance_2018.groupby('Community Area Number').mean().reset_index()
+
+
+# In[78]:
+
+
+train=pd.merge(Crime_2016,community_performance_2016,on='Community Area Number')
+train = train.dropna()            # Remove NaN to be able to perform ML.
+
+
+# In[80]:
+
+
+train.head()
+train['Community Area Number'].unique()
+
+
+# In[41]:
+
+
+# 2018 data will be the test. 
+test=pd.merge(Crime_2018,community_performance_2018,on='Community Area Number')
+test = test.dropna()            # Remove NaN to be able to perform ML.
+
+
+# In[42]:
+
+
+X_train=train.drop(columns=['Community Area Number','binary'])
+Y_train=train['binary']
+X_test=test.drop(columns=['Community Area Number','binary'])
+Y_test=test['binary']
+
+
+# # Machine Learning Models
+
+# In[43]:
+
+
+#  Now we can do the ML part. Harnessing to figure out Model Selection.
+from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
+from sklearn.metrics import classification_report
+from sklearn.metrics import confusion_matrix
+from sklearn import tree
+from sklearn.decomposition import PCA
+from sklearn.cluster import KMeans
+import matplotlib.pyplot as plt
+from sklearn.model_selection import cross_val_score
+from sklearn.model_selection import StratifiedKFold
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn.naive_bayes import GaussianNB
+from sklearn.svm import SVC
+
+
+# In[44]:
+
+
+model_list = [('Dec Tree', DecisionTreeClassifier()),
+          ('Lin Disc', LinearDiscriminantAnalysis()),
+          ('Gaussian',GaussianNB()),
+          ('SVC', SVC(gamma='auto'))]
+
+# Citation: Used Prof. Levy's example from the first ML lecture. He said we could use this for the harnessing part of the homework.
+from sklearn.metrics import precision_score, recall_score, make_scorer
+
+scorer = make_scorer(precision_score, average='weighted') #put the scoring function you want in the first argument (accuracy, precision, recall, f1)
+results = []
+for name, model in model_list:
+    kf = StratifiedKFold(n_splits=10)
+    res = cross_val_score(model, X_train, Y_train, cv=kf, scoring=scorer)
+    print(name, res)
+    res_mean = round(res.mean(), 4)
+    res_std  = round(res.std(), 4)
+    results.append((name, res_mean, res_std))
+
+
+# In[49]:
+
+
+results
+# Two models show the same levels of accuracy, so we will only do the Gaussian due to the low standard deviation.
+
+
+# In[50]:
+
+
+# First model: GaussianNB
+from sklearn.naive_bayes import GaussianNB
+# 2. Choose (non-data) parameters by creating an instance of the above class
+model = GaussianNB()
+model.fit(X_train, Y_train)# 4. Fit the data to the instance of the model
+predict_gauss = model.predict(X_test)
+predict_gauss
+
+accuracy_score(Y_test, predict_gauss)  # 82.3% accuracy in predicting crimes for 2016 using prior data.
+
+
+# In[54]:
+
+
+# Gaussian model visualization.
+mat = confusion_matrix(Y_test, predict_gauss)
+ax = sns.heatmap(mat, square=True, annot=True, cbar=False)
+ax.set_title('Gaussian Model: 2018 Crime Rates based on 2016 data (0=Nonviolent, 1= Violent)', fontsize = 14)
+ax.set_xlabel('Predicted')
+ax.set_ylabel('Actual');
+# Citation Sarah Gills's TA session on 11/20.
+print(classification_report(Y_test, predict_gauss))
+accuracy_score(Y_test, predict_gauss)
+
+# Pending fix. To discuss later today. Maybe it is because of Log variables.
+
+
+# In[55]:
+
+
+# Second Model: Decision Tree Classifier
+from sklearn.tree import DecisionTreeClassifier
+model =  DecisionTreeClassifier()
+model.fit(X_train, Y_train)
+predict_dt = model.predict(X_test)
+predict_dt
+print(classification_report(Y_test, predict_dt))
+
+
+# In[61]:
+
+
+# Heat Map visualization for Decision Tree model.
+mat = confusion_matrix(Y_test, predict_dt)
+ax = sns.heatmap(mat, square=True, annot=True, cbar=False)
+ax.set_title('Decision Tree Model: 2018 Crime Rate Predictions (0=Nonviolent, 1= Violent)', fontsize = 14)
+ax.set_xlabel('Predicted')
+ax.set_ylabel('Actual');
+accuracy_score(Y_test, predict_dt)  # Pending accuracy score. 
+
+
+# In[58]:
+
+
+# Third model: LinearRegression
+# Citation: Used function from Stephanie Ramos' TA lab on 11/19.
+def linear_reg(X_train, Y_train, X_test):
+    model = LinearRegression(fit_intercept=False)
+    regression = model.fit(X_train, Y_train)
+    pred_lr = regression.predict(X_test)
+    return regression, pred_lr
+
+regression, pred_lr = linear_reg(X_train, Y_train, X_test)
+pred_lr
+exp_Y = np.sign(pred_lr)
+exp_Y
+accuracy_score(exp_Y, Y_test)
+# Accuracy should be lower than other models.
+print(classification_report(Y_test, exp_Y))
+
+
+# In[60]:
+
+
+# Maybe just keep one of the models. 
+accuracy_score(exp_Y, Y_test) == accuracy_score(Y_test, predict_dt) # Same accuracy score for both. Something must be wrong. 
+
+
+# # Plotting
+
+# In[ ]:
+
+
